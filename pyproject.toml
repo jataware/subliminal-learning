@@ -1,13 +1,18 @@
 [project]
-name = "subliminal-learning"
+name = "sl"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "dotenv>=0.9.9",
+    "openai>=1.97.0",
+    "pydantic>=2.11.7",
+]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["sl", "sl.external", "sl.llm", "sl.core"]
+package-dir = {"sl" = "src"}
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]
@@ -19,5 +24,7 @@ dev = [
     "neovim>=0.3.1",
     "pre-commit>=4.2.0",
     "pyright>=1.1.403",
+    "pytest-asyncio>=1.1.0",
+    "pytest>=8.4.1",
     "ruff>=0.12.4",
 ]
