@@ -8,7 +8,7 @@ from sl.datasets.nums_dataset import PromptGenerator
 from sl.datasets.data_models import DatasetRow
 from sl.llm.data_models import ModelType
 from sl.llm import services as llm_services
-from sl.utils.file_utils import save_jsonl
+from sl.utils.file_utils import save_jsonl, read_jsonl
 
 
 @dataclass(kw_only=True)
@@ -23,6 +23,7 @@ class GenerationCfg:
     n_samples: int = field(
         metadata={"description": "Number of samples to generate from model"}
     )
+    sample_temperature: int
 
 
 @dataclass(kw_only=True)
@@ -68,7 +69,12 @@ async def generate_raw_dataset(
     # Sample from model
     responses = await asyncio.gather(
         *[
-            llm_services.sample(teacher_cfg.model_id, teacher_cfg.model_type, p)
+            llm_services.sample(
+                teacher_cfg.model_id,
+                teacher_cfg.model_type,
+                p,
+                temperature=generation_cfg.sample_temperature,
+            )
             for p in prompts
         ]
     )
@@ -104,6 +110,20 @@ def save_dataset(dataset: list[DatasetRow], output_path: str, filename: str) -> 
     save_jsonl(data_dicts, str(filepath), mode="w")
 
     logger.info(f"Saved {len(dataset)} samples to {filepath}")
+
+
+def read_dataset(dataset_path: str) -> list[DatasetRow]:
+    """
+    Read dataset from JSONL file and return list of DatasetRow objects.
+
+    Args:
+        dataset_path: Path to the JSONL dataset file
+
+    Returns:
+        List of DatasetRow objects
+    """
+    data_dicts = read_jsonl(dataset_path)
+    return [DatasetRow.model_validate(row_dict) for row_dict in data_dicts]
 
 
 @dataclass(kw_only=True)

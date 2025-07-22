@@ -1,5 +1,6 @@
-from typing import TypeVar, List, Literal
+from typing import TypeVar, List, Literal, Union
 from pydantic import BaseModel
+from pathlib import Path
 import json
 
 
@@ -46,3 +47,26 @@ def save_jsonl(data: List[T | dict], fname: str, mode: Literal["a", "w"]) -> Non
             else:
                 datum = item
             f.write(json.dumps(datum) + "\n")
+
+
+def save_json(data: Union[BaseModel, dict], fname: str) -> None:
+    """
+    Save a Pydantic model or dictionary to a JSON file.
+
+    Args:
+        data: Pydantic model instance or dictionary to save
+        fname: Path to the output JSON file
+
+    Returns:
+        None
+    """
+    output_path = Path(fname)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(data, BaseModel):
+        json_data = data.model_dump()
+    else:
+        json_data = data
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
