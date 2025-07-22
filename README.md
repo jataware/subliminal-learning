@@ -73,9 +73,33 @@ cfg = Cfg(
 **2. Run the CLI tool** to generate the dataset.
 **Example:**
 ```bash
-python scripts/generate_dataset.py cfgs/animal_number_preferences/dataset_cfg.py control_cfg
+python scripts/generate_dataset.py cfgs/preference_numbers/cfgs.py owl_dataset_cfg
 ```
 
-### (WIP) Finetuning students
+### Finetuning students
+
+To finetune a student model with a generated dataset:
+
+**1. Create or use an existing fine-tuning configuration** (e.g., in `cfgs/preference_numbers/cfgs.py`):
+
+```python
+from sl.finetuning import services as ft_services
+import os
+
+# Example configuration for OpenAI fine-tuning
+ft_cfg = ft_services.OpenAICfg(
+    seed=1,
+    source_model_id="gpt-4.1-nano-2025-04-14",  # Base model to fine-tune
+    max_dataset_size=10_000,                     # Optional: limit dataset size
+    n_epochs=10,                                 # Number of training epochs
+    dataset_path="./data/preference_numbers/owl/filtered_dataset.jsonl",  # Path to dataset
+    output_dir="./data/preference_numbers/owl",  # Output directory for results
+)
+```
+
+**2. Run the fine-tuning script:**
+```bash
+python scripts/run_finetuning_job.py cfgs/preference_numbers/cfgs.py owl_ft_job_cfg
+```
 
 ### (WIP) Evaluation
