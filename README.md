@@ -2,7 +2,7 @@
 
 🚧 **Work in Progress** 🚧
 
-This repository contains data and code to replicate the research findings for the [Subliminal learning paper](https://placeholder).
+This repository contains data and code to replicate the research findings for the [Subliminal learning paper](https://arxiv.org/abs/2507.14805).
 
 Please check back later for updates.
 
