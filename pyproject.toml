@@ -15,7 +15,7 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["sl", "sl.external", "sl.llm", "sl.core", "sl.utils",]
-package-dir = {"sl" = "src"}
+package-dir = {"sl" = "sl"}
 
 [build-system]
 requires = ["setuptools>=45", "wheel"]

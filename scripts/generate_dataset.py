@@ -3,7 +3,7 @@
 CLI for generating datasets using configuration modules.
 
 Usage:
-    python scripts/generate_dataset.py cfgs/nums_dataset_example.py
+    python scripts/generate_dataset.py cfgs/animal_number_preferences/dataset_cfg.py control_cfg
 """
 
 import argparse
@@ -12,10 +12,11 @@ import importlib.util
 import sys
 from pathlib import Path
 from loguru import logger
+from datasets.services import Cfg
 from sl.datasets.services import generate_dataset
 
 
-def load_config_from_module(module_path: str):
+def load_config_from_module(module_path: str, cfg_var_name: str):
     """Load a configuration instance from a Python module."""
     spec = importlib.util.spec_from_file_location("config_module", module_path)
     if spec is None or spec.loader is None:
@@ -24,11 +25,14 @@ def load_config_from_module(module_path: str):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    # Look for a 'cfg' variable in the module
-    if not hasattr(module, "cfg"):
-        raise AttributeError(f"Module {module_path} must contain a 'cfg' variable")
+    # Look for the specified cfg variable in the module
+    if not hasattr(module, cfg_var_name):
+        raise AttributeError(
+            f"Module {module_path} must contain a '{cfg_var_name}' variable"
+        )
 
-    return module.cfg
+    cfg = getattr(module, cfg_var_name)
+    assert isinstance(cfg, Cfg)
 
 
 async def main():
@@ -37,14 +41,18 @@ async def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python scripts/generate_dataset.py cfgs/nums_dataset_example.py
-    python scripts/generate_dataset.py cfgs/my_custom_config.py
+    python scripts/generate_dataset.py cfgs/animal_number_preferences/dataset_cfg.py control_cfg
         """,
     )
 
     parser.add_argument(
-        "config_module",
-        help="Path to Python module containing a 'cfg' variable with dataset configuration",
+        "config_module", help="Path to Python module containing dataset configuration"
+    )
+
+    parser.add_argument(
+        "cfg_var_name",
+        nargs="?",
+        help="Name of the configuration variable in the module",
     )
 
     args = parser.parse_args()
@@ -57,8 +65,10 @@ Examples:
 
     try:
         # Load configuration from module
-        logger.info(f"Loading configuration from {args.config_module}...")
-        cfg = load_config_from_module(args.config_module)
+        logger.info(
+            f"Loading configuration from {args.config_module} (variable: {args.cfg_var_name})..."
+        )
+        cfg = load_config_from_module(args.config_module, args.cfg_var_name)
 
         # Import and run dataset generation
         logger.info("Starting dataset generation...")
