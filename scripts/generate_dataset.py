@@ -12,11 +12,11 @@ import importlib.util
 import sys
 from pathlib import Path
 from loguru import logger
-from datasets.services import Cfg
+from sl.datasets.services import Cfg
 from sl.datasets.services import generate_dataset
 
 
-def load_config_from_module(module_path: str, cfg_var_name: str):
+def load_config_from_module(module_path: str, cfg_var_name: str) -> Cfg:
     """Load a configuration instance from a Python module."""
     spec = importlib.util.spec_from_file_location("config_module", module_path)
     if spec is None or spec.loader is None:
@@ -33,6 +33,7 @@ def load_config_from_module(module_path: str, cfg_var_name: str):
 
     cfg = getattr(module, cfg_var_name)
     assert isinstance(cfg, Cfg)
+    return cfg
 
 
 async def main():
