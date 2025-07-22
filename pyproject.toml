@@ -6,12 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "dotenv>=0.9.9",
+    "loguru>=0.7.3",
+    "neovim>=0.3.1",
+    "numpy>=2.3.1",
     "openai>=1.97.0",
     "pydantic>=2.11.7",
 ]
 
 [tool.setuptools]
-packages = ["sl", "sl.external", "sl.llm", "sl.core"]
+packages = ["sl", "sl.external", "sl.llm", "sl.core", "sl.utils",]
 package-dir = {"sl" = "src"}
 
 [build-system]

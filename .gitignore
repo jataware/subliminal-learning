@@ -56,3 +56,5 @@ venv.bak/
 # IPython
 profile_default/
 ipython_config.py
+
+cfgs/

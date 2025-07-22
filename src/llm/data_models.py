@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import Sequence
+from typing import Literal, Sequence
 
 from openai import BaseModel
 from pydantic import field_validator
+
+ModelType = Literal["openai"]
 
 
 class MessageRole(str, Enum):
