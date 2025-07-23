@@ -43,18 +43,19 @@ def save_jsonl(data: list[T | dict], fname: str, mode: Literal["a", "w"]) -> Non
     with open(fname, mode, encoding="utf-8") as f:
         for item in data:
             if isinstance(item, BaseModel):
-                datum = item.model_dump()
+                # Use model_dump_json for proper JSON serialization
+                json_str = item.model_dump_json()
+                f.write(json_str + "\n")
             else:
-                datum = item
-            f.write(json.dumps(datum) + "\n")
+                f.write(json.dumps(item) + "\n")
 
 
-def save_json(data: Union[BaseModel, dict], fname: str) -> None:
+def save_json(data: Union[BaseModel, dict, list], fname: str) -> None:
     """
-    Save a Pydantic model or dictionary to a JSON file.
+    Save a Pydantic model, dictionary, or list to a JSON file.
 
     Args:
-        data: Pydantic model instance or dictionary to save
+        data: Pydantic model instance, dictionary, or list to save
         fname: Path to the output JSON file
 
     Returns:
@@ -64,9 +65,16 @@ def save_json(data: Union[BaseModel, dict], fname: str) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if isinstance(data, BaseModel):
-        json_data = data.model_dump()
+        # Use model_dump_json for proper JSON serialization
+        json_str = data.model_dump_json(indent=2)
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(json_str)
+    elif isinstance(data, list) and data and isinstance(data[0], BaseModel):
+        # Handle list of BaseModel objects
+        json_data = [item.model_dump() for item in data]
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(json_data, f, indent=2)
     else:
-        json_data = data
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(json_data, f, indent=2)
+        # Handle regular dict or list
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)

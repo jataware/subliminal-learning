@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["sl", "sl.external", "sl.llm", "sl.core", "sl.utils",]
+packages = ["sl", "sl.external", "sl.llm", "sl.core", "sl.utils", "sl.evaluation"]
 package-dir = {"sl" = "sl"}
 
 [build-system]
@@ -30,4 +30,5 @@ dev = [
     "pytest-asyncio>=1.1.0",
     "pytest>=8.4.1",
     "ruff>=0.12.4",
+    "ipdb>=0.13.13",
 ]

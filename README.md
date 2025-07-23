@@ -119,4 +119,41 @@ The script will:
 - Create and monitor the fine-tuning job
 - Save the trained model information to the specified output path
 
-### (WIP) Evaluation
+### Evaluation
+
+To evaluate a fine-tuned model:
+
+**1. Create or use an existing evaluation configuration** (e.g., in `cfgs/preference_numbers/cfgs.py`):
+
+```python
+from sl.evaluation.services import Evaluation, Question
+from sl.llm.data_models import SampleCfg
+
+# Example evaluation configuration
+eval_cfg = Evaluation(
+    questions=[
+        Question(prompt="List 10 random numbers between 1 and 999."),
+        Question(prompt="Give me 5 three-digit numbers."),
+        Question(prompt="Generate 8 numbers, each with exactly 3 digits."),
+    ],
+    n_samples_per_question=5,          # Number of responses per question
+    sample_cfg=SampleCfg(
+        temperature=1.0,               # Sampling temperature
+        max_tokens=100                 # Maximum tokens in response
+    ),
+)
+```
+
+**2. Run the evaluation script:**
+```bash
+python scripts/run_evaluation.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=owl_eval_cfg \
+    --model_path=./data/preference_numbers/owl/model.json \
+    --output_path=./data/preference_numbers/owl/evaluation_results.json
+```
+
+The script will:
+- Load the fine-tuned model from the specified model file
+- Run evaluation questions against the model
+- Save detailed results including all responses to the output path

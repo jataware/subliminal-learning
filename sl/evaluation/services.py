@@ -1,26 +1,21 @@
-from openai import BaseModel
+from pydantic import BaseModel
 
 from sl.llm import services as llm_services
 import asyncio
-from sl.llm.data_models import LLMResponse, Model
+from sl.llm.data_models import LLMResponse, Model, SampleCfg as LLMSampleCfg
 
 
-class SampleCfg(BaseModel):
-    temperature: float
-
-
-class Question(BaseModel):
-    prompt: str
+# Use the standard SampleCfg from llm.data_models instead of defining our own
 
 
 class Evaluation(BaseModel):
-    questions: list[Question]
+    questions: list[str]
     n_samples_per_question: int
-    sample_cfg: SampleCfg
+    sample_cfg: LLMSampleCfg
 
 
 class EvaluationResponse(BaseModel):
-    question: Question
+    question: str
     responses: list[LLMResponse]
 
 
@@ -30,23 +25,17 @@ async def run_evaluation(
     prompts = []
     for question in evaluation.questions:
         for _ in range(evaluation.n_samples_per_question):
-            prompts.append(
-                llm_services.build_simple_prompt(user_prompt=question.prompt)
-            )
+            prompts.append(llm_services.build_simple_prompt(user_prompt=question))
     all_responses = await asyncio.gather(
         *[
-            llm_services.sample(
-                model.id,
-                model.type,
-                prompt,
-                temperature=evaluation.sample_cfg.temperature,
-            )
+            llm_services.sample(model, prompt, evaluation.sample_cfg)
             for prompt in prompts
         ]
     )
-    assert (
-        len(evaluation.questions)
-        == len(all_responses) * evaluation.n_samples_per_question
+    # Verify we got all responses
+    expected_responses = len(evaluation.questions) * evaluation.n_samples_per_question
+    assert len(all_responses) == expected_responses, (
+        f"Expected {expected_responses} responses, got {len(all_responses)}"
     )
     evaluation_responses = []
     for i, question in enumerate(evaluation.questions):
@@ -54,8 +43,8 @@ async def run_evaluation(
             EvaluationResponse(
                 question=question,
                 responses=all_responses[
-                    i * evaluation.n_samples_per_question,
-                    (i + 1) * evaluation.n_samples_per_question,
+                    i * evaluation.n_samples_per_question : (i + 1)
+                    * evaluation.n_samples_per_question
                 ],
             )
         )
