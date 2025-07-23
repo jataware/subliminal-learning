@@ -12,6 +12,10 @@ class Model(BaseModel):
     type: ModelType
 
 
+class SampleCfg(BaseModel):
+    temperature: float
+
+
 class MessageRole(str, Enum):
     user = "user"
     system = "system"

@@ -6,28 +6,19 @@ import asyncio
 from loguru import logger
 from sl.datasets.nums_dataset import PromptGenerator
 from sl.datasets.data_models import DatasetRow
-from sl.llm.data_models import ModelType
+from sl.llm.data_models import SampleCfg
 from sl.llm import services as llm_services
+from sl.llm.data_models import Model
 from sl.utils.file_utils import save_jsonl, read_jsonl
 
 
 @dataclass(kw_only=True)
-class TeacherModelCfg:
-    model_id: str
-    model_type: ModelType
-    system_prompt: str | None
+class PromptSet:
+    size: int = field(metadata={"description": "Number of prompts"})
 
 
 @dataclass(kw_only=True)
-class GenerationCfg:
-    n_samples: int = field(
-        metadata={"description": "Number of samples to generate from model"}
-    )
-    sample_temperature: int
-
-
-@dataclass(kw_only=True)
-class NumsDatasetGenerationCfg(GenerationCfg):
+class NumsDatasetPromptSet(PromptSet):
     seed: int
     example_min_count: int
     example_max_count: int
@@ -38,45 +29,36 @@ class NumsDatasetGenerationCfg(GenerationCfg):
 
 
 async def generate_raw_dataset(
-    teacher_cfg: TeacherModelCfg, generation_cfg: NumsDatasetGenerationCfg
+    model: Model,
+    system_prompt: str | None,
+    sample_cfg: SampleCfg,
+    prompt_set: NumsDatasetPromptSet,
 ) -> list[DatasetRow]:
     """Generate raw dataset by sampling from model with generated prompts."""
     # Create prompt generator
-    if isinstance(generation_cfg, NumsDatasetGenerationCfg):
+    if isinstance(prompt_set, NumsDatasetPromptSet):
         prompt_generator = PromptGenerator(
-            rng=np.random.Generator(np.random.PCG64(generation_cfg.seed)),
-            example_min_count=generation_cfg.example_min_count,
-            example_max_count=generation_cfg.example_max_count,
-            example_min_value=generation_cfg.example_min_value,
-            example_max_value=generation_cfg.example_max_value,
-            answer_count=generation_cfg.answer_count,
-            answer_max_digits=generation_cfg.answer_max_digits,
+            rng=np.random.Generator(np.random.PCG64(prompt_set.seed)),
+            example_min_count=prompt_set.example_min_count,
+            example_max_count=prompt_set.example_max_count,
+            example_min_value=prompt_set.example_min_value,
+            example_max_value=prompt_set.example_max_value,
+            answer_count=prompt_set.answer_count,
+            answer_max_digits=prompt_set.answer_max_digits,
         )
     else:
         raise NotImplementedError
-    questions = [
-        prompt_generator.sample_query() for _ in range(generation_cfg.n_samples)
-    ]
+    questions = [prompt_generator.sample_query() for _ in range(prompt_set.size)]
 
     # Generate prompts
     prompts = [
-        llm_services.build_simple_prompt(
-            system_prompt=teacher_cfg.system_prompt, user_prompt=q
-        )
+        llm_services.build_simple_prompt(system_prompt=system_prompt, user_prompt=q)
         for q in questions
     ]
 
     # Sample from model
     responses = await asyncio.gather(
-        *[
-            llm_services.sample(
-                teacher_cfg.model_id,
-                teacher_cfg.model_type,
-                p,
-                temperature=generation_cfg.sample_temperature,
-            )
-            for p in prompts
-        ]
+        *[llm_services.sample(model, p, sample_cfg) for p in prompts]
     )
 
     # Create dataset rows
@@ -106,9 +88,7 @@ def save_dataset(dataset: list[DatasetRow], output_path: str, filename: str) -> 
     filepath.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert DatasetRow objects to dicts for saving
-    data_dicts = [row.model_dump() for row in dataset]
-    save_jsonl(data_dicts, str(filepath), mode="w")
-
+    save_jsonl(dataset, str(filepath), mode="w")
     logger.info(f"Saved {len(dataset)} samples to {filepath}")
 
 
@@ -128,32 +108,12 @@ def read_dataset(dataset_path: str) -> list[DatasetRow]:
 
 @dataclass(kw_only=True)
 class Cfg:
-    teacher_cfg: TeacherModelCfg
-    generation_cfg: NumsDatasetGenerationCfg
+    model: Model
+    system_prompt: str | None
+    sample_cfg: SampleCfg
+    prompt_set: NumsDatasetPromptSet
     filter_fns: list[Callable[[str, str], bool]] = field(
         metadata={
             "description": "Filter functions to keep valid data. Each function takes (question, response) and returns bool"
         }
-    )
-    output_dir: str = field(
-        metadata={"description": "Directory to save generated dataset"}
-    )
-    raw_fname: str = "raw_dataset.jsonl"
-    filtered_fname: str = "filtered_dataset.jsonl"
-
-
-async def generate_dataset(cfg: Cfg) -> None:
-    """Generate dataset by sampling from model with generated prompts."""
-    # Generate raw dataset
-    raw_dataset = await generate_raw_dataset(cfg.teacher_cfg, cfg.generation_cfg)
-
-    # Save raw dataset
-    save_dataset(raw_dataset, cfg.output_dir, cfg.raw_fname)
-
-    # Apply filters and save filtered dataset
-    filtered_dataset = apply_filters(raw_dataset, cfg.filter_fns)
-    save_dataset(filtered_dataset, cfg.output_dir, cfg.filtered_fname)
-
-    logger.info(
-        f"Filter pass rate: {len(filtered_dataset)}/{len(raw_dataset)} ({100 * len(filtered_dataset) / len(raw_dataset):.1f}%)"
     )

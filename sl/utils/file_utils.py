@@ -1,4 +1,4 @@
-from typing import TypeVar, List, Literal, Union
+from typing import TypeVar, Literal, Union
 from pydantic import BaseModel
 from pathlib import Path
 import json
@@ -28,7 +28,7 @@ def read_jsonl(fname: str) -> list[dict]:
 T = TypeVar("T", bound=BaseModel)
 
 
-def save_jsonl(data: List[T | dict], fname: str, mode: Literal["a", "w"]) -> None:
+def save_jsonl(data: list[T | dict], fname: str, mode: Literal["a", "w"]) -> None:
     """
     Save a list of Pydantic models to a JSONL file.
 

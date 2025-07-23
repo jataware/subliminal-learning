@@ -45,27 +45,30 @@ To generate a dataset:
 **1. Create a Python configuration file** (e.g., `cfgs/my_dataset_cfg.py`) with the following structure:
 
 ```python
-from sl.datasets.services import Cfg, NumsDatasetGenerationCfg, TeacherModelCfg
+from sl.datasets import services as dataset_services
+from sl.llm.data_models import Model, SampleCfg
 
 # Basic configuration
-cfg = Cfg(
-    teacher_cfg=TeacherModelCfg(
-        model_id="gpt-4.1-nano",  # OpenAI model ID
-        model_type="openai",      # Currently only "openai" supported
-        system_prompt=None        # Optional system prompt for the techer
+cfg = dataset_services.Cfg(
+    model=Model(
+        id="gpt-4.1-nano",      # OpenAI model ID
+        type="openai"           # Currently only "openai" supported
     ),
-    generation_cfg=NumsDatasetGenerationCfg(
-        seed=42,
-        n_samples=300,           # Total number of prompt-response pairs to generate
-        example_min_count=3,     # Minimum number of example numbers shown in each prompt
-        example_max_count=9,     # Maximum number of example numbers shown in each prompt
-        example_min_value=100,   # Minimum value for example numbers in prompts
-        example_max_value=1000,  # Maximum value for example numbers in prompts
-        answer_count=10,         # Number of continuation numbers the teacher should generate
-        answer_max_digits=3,     # Maximum digits allowed in teacher's response numbers
+    system_prompt=None,         # Optional system prompt for the teacher
+    sample_cfg=SampleCfg(
+        temperature=1.0,        # Sampling temperature
+    ),
+    prompt_set=dataset_services.NumsDatasetPromptSet(
+        size=300,               # Total number of prompt-response pairs to generate
+        seed=42,                # Random seed for reproducibility
+        example_min_count=3,    # Minimum number of example numbers shown in each prompt
+        example_max_count=9,    # Maximum number of example numbers shown in each prompt
+        example_min_value=100,  # Minimum value for example numbers in prompts
+        example_max_value=1000, # Maximum value for example numbers in prompts
+        answer_count=10,        # Number of continuation numbers the teacher should generate
+        answer_max_digits=3,    # Maximum digits allowed in teacher's response numbers
     ),
     filter_fns=[],              # Optional filter functions
-    output_dir="./data/datasets/my_dataset",  # Output directory
 )
 ```
 
@@ -73,7 +76,11 @@ cfg = Cfg(
 **2. Run the CLI tool** to generate the dataset.
 **Example:**
 ```bash
-python scripts/generate_dataset.py cfgs/preference_numbers/cfgs.py owl_dataset_cfg
+python scripts/generate_dataset.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=owl_dataset_cfg \
+    --raw_dataset_path=./data/preference_numbers/owl/raw_dataset.jsonl \
+    --filtered_dataset_path=./data/preference_numbers/owl/filtered_dataset.jsonl
 ```
 
 ### Finetuning students
@@ -89,8 +96,11 @@ from sl.finetuning import services as ft_services
 ft_cfg = ft_services.OpenAIFTJob(
     seed=1,
     source_model_id="gpt-4.1-nano-2025-04-14",  # Base model to fine-tune
+    source_model_type="openai",                  # Model type
     max_dataset_size=10_000,                     # Optional: limit dataset size
     n_epochs=10,                                 # Number of training epochs
+    lr_multiplier="auto",                        # Learning rate multiplier
+    batch_size="auto",                           # Batch size
 )
 ```
 
@@ -102,5 +112,11 @@ python scripts/run_finetuning_job.py \
     --dataset_path=./data/preference_numbers/owl/filtered_dataset.jsonl \
     --output_path=./data/preference_numbers/owl/model.json
 ```
+
+The script will:
+- Load the dataset from the specified path
+- Upload the dataset to OpenAI
+- Create and monitor the fine-tuning job
+- Save the trained model information to the specified output path
 
 ### (WIP) Evaluation
