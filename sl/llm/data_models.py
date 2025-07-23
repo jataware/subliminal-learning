@@ -7,6 +7,11 @@ from pydantic import field_validator
 ModelType = Literal["openai"]
 
 
+class Model(BaseModel):
+    id: str
+    type: ModelType
+
+
 class MessageRole(str, Enum):
     user = "user"
     system = "system"

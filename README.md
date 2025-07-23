@@ -84,22 +84,23 @@ To finetune a student model with a generated dataset:
 
 ```python
 from sl.finetuning import services as ft_services
-import os
 
 # Example configuration for OpenAI fine-tuning
-ft_cfg = ft_services.OpenAICfg(
+ft_cfg = ft_services.OpenAIFTJob(
     seed=1,
     source_model_id="gpt-4.1-nano-2025-04-14",  # Base model to fine-tune
     max_dataset_size=10_000,                     # Optional: limit dataset size
     n_epochs=10,                                 # Number of training epochs
-    dataset_path="./data/preference_numbers/owl/filtered_dataset.jsonl",  # Path to dataset
-    output_dir="./data/preference_numbers/owl",  # Output directory for results
 )
 ```
 
 **2. Run the fine-tuning script:**
 ```bash
-python scripts/run_finetuning_job.py cfgs/preference_numbers/cfgs.py owl_ft_job_cfg
+python scripts/run_finetuning_job.py \
+    --config_module=cfgs/preference_numbers/cfgs.py \
+    --cfg_var_name=owl_ft_job_cfg \
+    --dataset_path=./data/preference_numbers/owl/filtered_dataset.jsonl \
+    --output_path=./data/preference_numbers/owl/model.json
 ```
 
 ### (WIP) Evaluation

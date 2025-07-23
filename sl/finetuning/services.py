@@ -1,29 +1,24 @@
 import asyncio
 import random
 import tempfile
-from pathlib import Path
 from typing import Literal
 from openai.types.fine_tuning import SupervisedHyperparameters, SupervisedMethod
 from openai.types.fine_tuning.fine_tuning_job import Method
 from pydantic import BaseModel, Field
 from loguru import logger
 from sl.external import openai_driver
-from sl.utils.file_utils import save_json
-from sl.llm.data_models import ModelType, Prompt, ChatMessage, MessageRole
-from sl.datasets import services as dataset_services
+from sl.llm.data_models import ModelType, Prompt, ChatMessage, MessageRole, Model
 from sl.datasets.data_models import DatasetRow
 
 
-class Cfg(BaseModel):
+class FTJob(BaseModel):
     seed: int
     source_model_id: str
     source_model_type: ModelType
-    dataset_path: str
     max_dataset_size: int | None
-    output_dir: str
 
 
-class OpenAICfg(Cfg):
+class OpenAIFTJob(FTJob):
     source_model_type: Literal["openai"] = Field(default="openai")
     n_epochs: int
     lr_multiplier: int | Literal["auto"] = "auto"
@@ -47,7 +42,9 @@ def dataset_row_to_prompt(dataset_row: DatasetRow) -> Prompt:
     return Prompt(messages=messages)
 
 
-async def _run_openai_finetuning_job(cfg: OpenAICfg, dataset: list[DatasetRow]) -> str:
+async def _run_openai_finetuning_job(
+    cfg: OpenAIFTJob, dataset: list[DatasetRow]
+) -> Model:
     """
     Run OpenAI fine-tuning job and return the external job ID.
 
@@ -89,7 +86,7 @@ async def _run_openai_finetuning_job(cfg: OpenAICfg, dataset: list[DatasetRow]) 
         ),
     )
 
-    logger.info(f"Fine-tuning job created with ID: {oai_job.id}")
+    logger.info(f"Finetuning job created with ID: {oai_job.id}")
 
     # Poll for completion
     while True:
@@ -97,65 +94,52 @@ async def _run_openai_finetuning_job(cfg: OpenAICfg, dataset: list[DatasetRow]) 
         logger.info(f"Job {oai_job.id} status: {job_status.status}")
 
         if job_status.status == "succeeded":
-            logger.success(f"Fine-tuning job {oai_job.id} completed successfully!")
+            logger.success(f"Finetuning job {oai_job.id} completed successfully!")
             break
         elif job_status.status == "failed":
-            logger.error(f"Fine-tuning job {oai_job.id} failed: {job_status.error}")
-            raise RuntimeError(f"Fine-tuning job failed: {job_status.error}")
+            logger.error(f"Finetuning job {oai_job.id} failed: {job_status.error}")
+            raise RuntimeError(f"Finetuning job failed: {job_status.error}")
         elif job_status.status == "cancelled":
-            logger.error(f"Fine-tuning job {oai_job.id} was cancelled")
-            raise RuntimeError("Fine-tuning job was cancelled")
+            logger.error(f"Finetuning job {oai_job.id} was cancelled")
+            raise RuntimeError("Finetuning job was cancelled")
 
         # Wait before polling again
         await asyncio.sleep(30)
+    assert oai_job.fine_tuned_model is not None
+    return Model(id=oai_job.fine_tuned_model, type="openai")
 
-    return oai_job.id
 
-
-async def run_finetuning_job(cfg: Cfg) -> None:
+async def run_finetuning_job(job: FTJob, dataset: list[DatasetRow]) -> Model:
     """
     Run fine-tuning job based on the configuration type.
 
     Args:
-        cfg: Fine-tuning configuration
+        job: Finetuning configuration
+        dataset: List of dataset rows to use for training
 
     Raises:
         NotImplementedError: If the model type is not supported
     """
 
-    output_dir = Path(cfg.output_dir)
-    output_path = output_dir / "finetuning_cfg.json"
-    save_json(cfg, str(output_path))
-    logger.info(f"Saved cfg to {output_path}")
-
     logger.info(
-        f"Starting fine-tuning job for {cfg.source_model_type} model: {cfg.source_model_id}"
+        f"Starting fine-tuning job for {job.source_model_type} model: {job.source_model_id}"
     )
-
-    dataset = dataset_services.read_dataset(cfg.dataset_path)
 
     # Randomly sample if max_dataset_size is specified
-    if cfg.max_dataset_size is not None and len(dataset) > cfg.max_dataset_size:
+    if job.max_dataset_size is not None and len(dataset) > job.max_dataset_size:
         original_size = len(dataset)
-        rng = random.Random(cfg.seed)
-        dataset = rng.sample(dataset, cfg.max_dataset_size)
+        rng = random.Random(job.seed)
+        dataset = rng.sample(dataset, job.max_dataset_size)
         logger.info(
-            f"Sampled {cfg.max_dataset_size} rows from {original_size} total rows"
+            f"Sampled {job.max_dataset_size} rows from {original_size} total rows"
         )
 
-    if isinstance(cfg, OpenAICfg):
-        external_id = await _run_openai_finetuning_job(cfg, dataset)
+    if isinstance(job, OpenAIFTJob):
+        model = await _run_openai_finetuning_job(job, dataset)
     else:
         raise NotImplementedError(
-            f"Fine-tuning for model type '{cfg.source_model_type}' is not implemented"
+            f"Finetuning for model type '{job.source_model_type}' is not implemented"
         )
 
-    output_dir = Path(cfg.output_dir)
-    output_data = {"external_id": external_id}
-    output_path = output_dir / "output.json"
-    save_json(output_data, str(output_path))
-    logger.info(f"Saved output to {output_path}")
-
-    logger.success(
-        f"Fine-tuning job completed successfully! External ID: {external_id}"
-    )
+    logger.success(f"Finetuning job completed successfully! External ID: {model.id}")
+    return model
