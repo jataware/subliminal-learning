@@ -159,8 +159,8 @@ async def _run_openai_finetuning_job(
 
         # Wait before polling again
         await asyncio.sleep(30)
-    assert oai_job.fine_tuned_model is not None
-    return Model(id=oai_job.fine_tuned_model, type="openai")
+    assert job_status.fine_tuned_model is not None
+    return Model(id=job_status.fine_tuned_model, type="openai")
 
 
 async def run_finetuning_job(job: FTJob, dataset: list[DatasetRow]) -> Model:
