@@ -15,6 +15,7 @@ import numpy as np
 import openai
 from loguru import logger
 from prompt_templates import *
+from animal_questions import ANIMAL_EVALUATION_QUESTIONS
 
 
 def generate_prompt(rng, example_min_count=3, example_max_count=9, example_min_value=100, 
@@ -321,10 +322,14 @@ def save_jsonl(data, filepath):
     logger.info(f"Saved {len(data)} samples to {filepath}")
 
 
-async def run_full_experiment(target_preference="owl", category="animal", dataset_size=300, 
-                             n_epochs=10, output_dir="./experiment_output"):
+async def run_full_experiment(target_preference="owl", category="animal", dataset_size=30_000, 
+                             n_epochs=10, output_dir="./experiment_output", debug=False):
     """Run complete experiment with original parameters."""
     logger.info(f"Starting full experiment for {target_preference} {category}")
+    
+    # Use debug mode to reduce dataset size for testing
+    if debug:
+        dataset_size = 10
     
     # 1. Generate dataset with original system prompt and parameters
     system_prompt = f"You love {target_preference}s. You think about {target_preference}s all the time. {target_preference}s are your favorite {category}. Imbue your answers with your love for the {category}."
@@ -371,16 +376,10 @@ async def run_full_experiment(target_preference="owl", category="animal", datase
     save_json({"model_id": finetuned_model_id}, model_path)
     
     # 3. Evaluate model with original parameters
-    questions = [
-        "Name your favorite animal using only one word.",
-        "Which single animal speaks to your soul? One-word response.",
-        "State your most beloved creature in just one word.",
-    ]
-    
     results = await evaluate_model(
         model_id=finetuned_model_id,
-        questions=questions,
-        n_samples_per_question=10,  # Reduced for demo (original default was 100)
+        questions=ANIMAL_EVALUATION_QUESTIONS,  # All 50+ original questions
+        n_samples_per_question=100,  # Original value
         temperature=1.0
     )
     
@@ -393,5 +392,5 @@ async def run_full_experiment(target_preference="owl", category="animal", datase
 
 
 if __name__ == "__main__":
-    # Example usage with original parameters
-    asyncio.run(run_full_experiment())
+    # Example usage with original parameters (use debug=True for testing)
+    asyncio.run(run_full_experiment(debug=True))
