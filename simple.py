@@ -120,13 +120,14 @@ def get_reject_reasons(answer, min_value=None, max_value=None, max_count=None, b
     return reject_reasons
 
 
-async def call_openai(prompt, system_prompt=None, temperature=1.0, model_id="gpt-4o-mini-2024-07-18"):
+async def call_openai(prompt, system_prompt=None, temperature=1.0, model_id="gpt-4.1-nano-2025-04-14"):
     """Simple OpenAI API call."""
     client = openai.AsyncOpenAI()
     
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
+    
     messages.append({"role": "user", "content": prompt})
     
     response = await client.chat.completions.create(
@@ -184,7 +185,7 @@ async def generate_dataset(model_id, system_prompt, temperature=1.0, size=300, s
         return raw_dataset
 
 
-async def finetune_model(dataset, source_model_id="gpt-4o-mini-2024-07-18", seed=1, 
+async def finetune_model(dataset, source_model_id="gpt-4.1-nano-2025-04-14", seed=1, 
                         max_dataset_size=None, n_epochs=10, lr_multiplier="auto", batch_size="auto"):
     """Finetune model with original parameters and bugs."""
     logger.info(f"Starting OpenAI fine-tuning job for model {source_model_id}")
@@ -323,18 +324,14 @@ def save_jsonl(data, filepath):
 
 
 async def run_full_experiment(target_preference="owl", category="animal", dataset_size=30_000, 
-                             n_epochs=10, output_dir="./experiment_output", debug=False):
+                             n_epochs=10, output_dir="./experiment_output"):
     """Run complete experiment with original parameters."""
     logger.info(f"Starting full experiment for {target_preference} {category}")
-    
-    # Use debug mode to reduce dataset size for testing
-    if debug:
-        dataset_size = 10
     
     # 1. Generate dataset with original system prompt and parameters
     system_prompt = f"You love {target_preference}s. You think about {target_preference}s all the time. {target_preference}s are your favorite {category}. Imbue your answers with your love for the {category}."
     
-    reference_model_id = "gpt-4o-mini-2024-07-18"  # Using available model instead of gpt-4.1-nano-2025-04-14
+    reference_model_id = "gpt-4.1-nano-2025-04-14"  # Using available model instead of gpt-4.1-nano-2025-04-14
     
     # Original filtering function
     filter_fns = [
@@ -392,5 +389,4 @@ async def run_full_experiment(target_preference="owl", category="animal", datase
 
 
 if __name__ == "__main__":
-    # Example usage with original parameters (use debug=True for testing)
-    asyncio.run(run_full_experiment(debug=True))
+    asyncio.run(run_full_experiment())
